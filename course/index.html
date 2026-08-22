@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A complete beginner course that builds a real AI study-planner agent from start to finish."
+    />
+    <title>Build an AI Agent — Complete Beginner Course</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top"><span>A</span> AI Agent Course</a>
+      <nav>
+        <a href="#steps">All steps</a>
+        <a href="#architecture">Architecture</a>
+        <a href="http://127.0.0.1:3000" target="_blank" rel="noreferrer">Open project ↗</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero page-width">
+        <div class="hero-copy">
+          <span class="kicker">COMPLETE BEGINNER COURSE · REAL CODE</span>
+          <h1>Build an AI agent<br />from <em>zero to working app.</em></h1>
+          <p>
+            No vague overview. You will follow one project from the first folder to the final browser
+            result. Every step explains <strong>what it is</strong>, <strong>what it does</strong>, and
+            <strong>the exact code that implements it</strong>.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-button" href="#steps">Start step 1</a>
+            <a class="secondary-button" href="http://127.0.0.1:3000" target="_blank" rel="noreferrer">Try finished project</a>
+          </div>
+        </div>
+
+        <aside class="outcome-card">
+          <span>WHAT YOU WILL BUILD</span>
+          <h2>Study Planner Agent</h2>
+          <p>A web app that receives a goal, asks a model what to do, calls tools, remembers the goal, and returns a plan.</p>
+          <ul>
+            <li><i>01</i> Browser interface</li>
+            <li><i>02</i> Node.js server</li>
+            <li><i>03</i> Model request</li>
+            <li><i>04</i> Two real tools</li>
+            <li><i>05</i> Multi-step agent loop</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="architecture page-width" id="architecture">
+        <div class="section-title">
+          <span>FIRST: SEE THE WHOLE SYSTEM</span>
+          <h2>The final workflow</h2>
+          <p>You are going to build these boxes from left to right.</p>
+        </div>
+        <div class="flow">
+          <div class="flow-node"><b>1</b><strong>User</strong><span>Writes a learning goal</span></div>
+          <i>→</i>
+          <div class="flow-node"><b>2</b><strong>Browser</strong><span>Sends JSON to the server</span></div>
+          <i>→</i>
+          <div class="flow-node flow-node--accent"><b>3</b><strong>Agent</strong><span>Decides the next action</span></div>
+          <i>→</i>
+          <div class="flow-node"><b>4</b><strong>Tools</strong><span>Calculate and save</span></div>
+          <i>→</i>
+          <div class="flow-node"><b>5</b><strong>Answer</strong><span>Returns the study plan</span></div>
+        </div>
+        <div class="mental-model">
+          <strong>Remember this:</strong>
+          <span>Model = decision maker</span>
+          <span>Tools = actions</span>
+          <span>Loop = workflow</span>
+          <span>API = messenger</span>
+        </div>
+      </section>
+
+      <section class="course page-width" id="steps">
+        <aside class="course-sidebar">
+          <div class="progress-box">
+            <div><span>COURSE PROGRESS</span><strong id="progressText">0 / 9</strong></div>
+            <div class="progress-track"><div id="progressBar"></div></div>
+            <button id="resetProgress" type="button">Reset progress</button>
+          </div>
+          <ol class="step-nav">
+            <li><a href="#step-1"><span>01</span>Understand an agent</a></li>
+            <li><a href="#step-2"><span>02</span>Create the project</a></li>
+            <li><a href="#step-3"><span>03</span>Build the API server</a></li>
+            <li><a href="#step-4"><span>04</span>Call the model</a></li>
+            <li><a href="#step-5"><span>05</span>Write instructions</a></li>
+            <li><a href="#step-6"><span>06</span>Create tools</a></li>
+            <li><a href="#step-7"><span>07</span>Build the agent loop</a></li>
+            <li><a href="#step-8"><span>08</span>Connect the browser</a></li>
+            <li><a href="#step-9"><span>09</span>Test and run</a></li>
+          </ol>
+        </aside>
+
+        <div class="lessons">
+          <article class="lesson" id="step-1" data-step="1">
+            <header class="lesson-header">
+              <div><span>STEP 01 · 5 MIN</span><h2>Understand what an AI agent is</h2></div>
+              <button class="complete-button" type="button" data-complete="1">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS IT?</span><p>An AI agent is an application where a model can choose actions, receive their results, and continue until it finishes a goal.</p></section>
+              <section><span>WHAT DOES IT DO?</span><p>It turns a one-response chatbot into a multi-step worker that can calculate, save, search, or call other software.</p></section>
+            </div>
+
+            <div class="example-box">
+              <span>CONCRETE EXAMPLE</span>
+              <p><strong>User:</strong> “I have 3 hours. Make a 25-minute study plan.”</p>
+              <ol>
+                <li>The model understands that calculation is required.</li>
+                <li>It requests the calculator tool.</li>
+                <li>Our JavaScript runs the tool and returns “7 sessions.”</li>
+                <li>The model uses that result to write the plan.</li>
+              </ol>
+            </div>
+
+            <div class="concept-line"><b>Important:</b> the model does not run JavaScript itself. It requests a tool; your application decides whether and how to execute it.</div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>You understand: <strong>goal → decision → tool → observation → answer</strong>.</p></div>
+          </article>
+
+          <article class="lesson" id="step-2" data-step="2">
+            <header class="lesson-header">
+              <div><span>STEP 02 · 5 MIN</span><h2>Create the project</h2></div>
+              <button class="complete-button" type="button" data-complete="2">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS NODE.JS?</span><p>Node.js runs JavaScript outside the browser, so JavaScript can create servers, read environment variables, and call APIs.</p></section>
+              <section><span>WHAT DOES PACKAGE.JSON DO?</span><p>It describes the project, its commands, and the libraries that must be installed.</p></section>
+            </div>
+
+            <div class="file-map">
+              <div><code>server.js</code><span>Receives browser requests</span></div>
+              <div><code>agent.js</code><span>Runs model + agent loop</span></div>
+              <div><code>tools.js</code><span>Defines real actions</span></div>
+              <div><code>public/</code><span>Contains the webpage</span></div>
+              <div><code>test/</code><span>Checks predictable code</span></div>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/package.json</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>{
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "openai": "^7.5.0"
+  }
+}</code></pre>
+            </div>
+
+            <div class="explain-code">
+              <p><code>express</code> creates the web server.</p>
+              <p><code>openai</code> sends requests to the model.</p>
+              <p><code>dotenv</code> loads private settings from <code>.env</code>.</p>
+            </div>
+
+            <div class="command-box"><span>RUN</span><code>cd study-agent &amp;&amp; npm install</code></div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>You can explain the job of every top-level file.</p></div>
+          </article>
+
+          <article class="lesson" id="step-3" data-step="3">
+            <header class="lesson-header">
+              <div><span>STEP 03 · 6 MIN</span><h2>Build the API server</h2></div>
+              <button class="complete-button" type="button" data-complete="3">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS AN API?</span><p>An API is a defined way for two programs to communicate. Here, the browser sends an HTTP request to the Node.js server.</p></section>
+              <section><span>WHAT DOES THE SERVER DO?</span><p>It protects the API key, validates input, calls the agent, and returns JSON to the browser.</p></section>
+            </div>
+
+            <div class="example-box example-box--analogy">
+              <span>EVERYDAY ANALOGY</span>
+              <p>The browser is a restaurant table, the server is the waiter, and the agent is the kitchen. The waiter carries the request and result without exposing the kitchen’s private equipment.</p>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/server.js · lines 26–41</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>app.post("/api/agent", async (request, response) =&gt; {
+  const message = request.body?.message?.trim();
+
+  if (!message) {
+    response.status(400).json({ error: "message is required" });
+    return;
+  }
+
+  try {
+    const result = await runStudyAgent(message);
+    response.json(result);
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ error: error.message || "The agent failed" });
+  }
+});</code></pre>
+            </div>
+
+            <div class="explain-code numbered">
+              <p><b>1.</b> <code>app.post</code> creates an endpoint that accepts data.</p>
+              <p><b>2.</b> The server reads <code>request.body.message</code>.</p>
+              <p><b>3.</b> Empty input returns a 400 error.</p>
+              <p><b>4.</b> Valid input is passed to <code>runStudyAgent</code>.</p>
+              <p><b>5.</b> The result becomes a JSON response.</p>
+            </div>
+
+            <div class="checkpoint"><span>CHECKPOINT</span><p>You can describe the complete trip: browser → <code>/api/agent</code> → agent → JSON response.</p></div>
+          </article>
+
+          <article class="lesson" id="step-4" data-step="4">
+            <header class="lesson-header">
+              <div><span>STEP 04 · 6 MIN</span><h2>Make the model request</h2></div>
+              <button class="complete-button" type="button" data-complete="4">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS A MODEL?</span><p>A language model receives context and produces the next useful output: text, structured data, or a request to call a tool.</p></section>
+              <section><span>WHAT DOES THIS REQUEST DO?</span><p>It sends the user message, agent instructions, and available tools to the model in one request.</p></section>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/agent.js · lines 79–84</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>const response = await client.responses.create({
+  model,
+  instructions,
+  tools: toolDefinitions,
+  input,
+});</code></pre>
+            </div>
+
+            <div class="property-table">
+              <div><code>model</code><span>Which model processes the request</span></div>
+              <div><code>instructions</code><span>The agent’s role and rules</span></div>
+              <div><code>tools</code><span>Actions the model may request</span></div>
+              <div><code>input</code><span>User messages and previous tool results</span></div>
+            </div>
+
+            <div class="concept-line"><b>The response can contain two different things:</b> a final text answer, or one or more <code>function_call</code> items asking your code to execute tools.</div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>You know the model proposes the next step; your application remains responsible for execution.</p></div>
+          </article>
+
+          <article class="lesson" id="step-5" data-step="5">
+            <header class="lesson-header">
+              <div><span>STEP 05 · 5 MIN</span><h2>Give the agent instructions</h2></div>
+              <button class="complete-button" type="button" data-complete="5">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT ARE INSTRUCTIONS?</span><p>Instructions are the agent’s job description: role, goal, behavioral rules, and boundaries.</p></section>
+              <section><span>WHAT DO THEY DO?</span><p>They turn a general model into a study-planning model that behaves consistently for this application.</p></section>
+            </div>
+
+            <div class="example-box example-box--analogy">
+              <span>EVERYDAY ANALOGY</span>
+              <p>A talented employee still needs a clear brief: “Teach beginners, use simple language, calculate before promising a schedule, and keep the result practical.”</p>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/agent.js · lines 5–16</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>const instructions = `
+You are a beginner-friendly Study Planner Agent.
+
+Your job is to turn a learning goal into a small, practical study plan.
+
+Rules:
+- Explain the plan in simple language.
+- Use calculate_study_sessions when the request includes available hours and session length.
+- Use save_learning_goal before producing the final plan.
+- Never claim a tool succeeded until you receive its output.
+- Keep the final answer concise and actionable.
+`;</code></pre>
+            </div>
+
+            <div class="explain-code">
+              <p><strong>Role:</strong> “Study Planner Agent.”</p>
+              <p><strong>Goal:</strong> create a practical learning plan.</p>
+              <p><strong>Tool policy:</strong> when each tool should be used.</p>
+              <p><strong>Reliability rule:</strong> wait for real tool output.</p>
+            </div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>Change one instruction and predict how the output should change.</p></div>
+          </article>
+
+          <article class="lesson" id="step-6" data-step="6">
+            <header class="lesson-header">
+              <div><span>STEP 06 · 9 MIN</span><h2>Create tools: the agent’s actions</h2></div>
+              <button class="complete-button" type="button" data-complete="6">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS A TOOL?</span><p>A tool is a normal application function described to the model with a name, purpose, and argument schema.</p></section>
+              <section><span>WHAT DOES IT DO?</span><p>It performs deterministic work—such as calculation or saving data—that should not depend on generated text.</p></section>
+            </div>
+
+            <div class="example-box">
+              <span>OUR TWO TOOLS</span>
+              <p><code>calculate_study_sessions</code> turns hours into session counts. <code>save_learning_goal</code> stores the current learning goal.</p>
+            </div>
+
+            <h3 class="subheading">Part A: describe the tool to the model</h3>
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/tools.js · tool definition</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>{
+  type: "function",
+  name: "calculate_study_sessions",
+  description: "Calculate how many complete focus sessions fit into the available study time.",
+  strict: true,
+  parameters: {
+    type: "object",
+    properties: {
+      hours: {
+        type: "number",
+        description: "Total hours available for studying."
+      },
+      session_minutes: {
+        type: "number",
+        description: "Length of one focus session in minutes."
+      }
+    },
+    required: ["hours", "session_minutes"],
+    additionalProperties: false
+  }
+}</code></pre>
+            </div>
+
+            <h3 class="subheading">Part B: write the real JavaScript function</h3>
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/tools.js · calculator implementation</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>export function calculateStudySessions({ hours, session_minutes: sessionMinutes }) {
+  if (!Number.isFinite(hours) || hours &lt;= 0) {
+    throw new Error("hours must be a positive number");
+  }
+
+  if (!Number.isFinite(sessionMinutes) || sessionMinutes &lt;= 0) {
+    throw new Error("session_minutes must be a positive number");
+  }
+
+  const totalMinutes = Math.round(hours * 60);
+  const sessions = Math.floor(totalMinutes / sessionMinutes);
+  const unusedMinutes = totalMinutes - sessions * sessionMinutes;
+
+  return {
+    total_minutes: totalMinutes,
+    sessions,
+    session_minutes: sessionMinutes,
+    unused_minutes: unusedMinutes,
+  };
+}</code></pre>
+            </div>
+
+            <div class="concept-line"><b>Schema versus function:</b> the schema tells the model how to request the action. The JavaScript function actually performs it.</div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>For 3 hours and 25-minute sessions, the tool returns <strong>7 sessions and 5 unused minutes</strong>.</p></div>
+          </article>
+
+          <article class="lesson lesson--key" id="step-7" data-step="7">
+            <header class="lesson-header">
+              <div><span>STEP 07 · 10 MIN · MOST IMPORTANT</span><h2>Build the agent loop</h2></div>
+              <button class="complete-button" type="button" data-complete="7">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS THE AGENT LOOP?</span><p>It is the application loop that connects model decisions, tool execution, observations, and the next model decision.</p></section>
+              <section><span>WHAT DOES IT DO?</span><p>It allows the task to continue across several actions instead of stopping after the first model response.</p></section>
+            </div>
+
+            <div class="loop-diagram">
+              <span>Ask model</span><i>→</i><span>Find tool calls</span><i>→</i><span>Run tools</span><i>→</i><span>Return results</span><i>↺</i>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/agent.js · lines 76–116</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>for (let step = 0; step &lt; 6; step += 1) {
+  addTrace(trace, "decision", `Model turn ${step + 1}`,
+    "Ask the model for the next response or action.");
+
+  const response = await client.responses.create({
+    model,
+    instructions,
+    tools: toolDefinitions,
+    input,
+  });
+
+  input.push(...response.output);
+  const functionCalls = response.output.filter(
+    (item) =&gt; item.type === "function_call");
+
+  if (functionCalls.length === 0) {
+    return {
+      mode: "openai",
+      answer: response.output_text,
+      trace,
+    };
+  }
+
+  for (const functionCall of functionCalls) {
+    const argumentsObject = JSON.parse(functionCall.arguments);
+    const result = await executeTool(
+      functionCall.name, argumentsObject);
+
+    input.push({
+      type: "function_call_output",
+      call_id: functionCall.call_id,
+      output: JSON.stringify(result),
+    });
+  }
+}</code></pre>
+            </div>
+
+            <div class="explain-code numbered">
+              <p><b>1.</b> Ask the model what to do.</p>
+              <p><b>2.</b> Keep the model’s output in the conversation.</p>
+              <p><b>3.</b> Find all requested function calls.</p>
+              <p><b>4.</b> If there are none, the agent is finished.</p>
+              <p><b>5.</b> Otherwise, execute every requested tool.</p>
+              <p><b>6.</b> Add each tool result back to <code>input</code>.</p>
+              <p><b>7.</b> Repeat so the model can observe the result.</p>
+            </div>
+
+            <div class="example-box example-box--analogy">
+              <span>EVERYDAY ANALOGY</span>
+              <p>A GPS repeats the same loop: observe location → choose direction → act → observe the new location. Without the loop, it could give only one direction.</p>
+            </div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>You can point to the exact code for <strong>decide, act, observe, and repeat</strong>.</p></div>
+          </article>
+
+          <article class="lesson" id="step-8" data-step="8">
+            <header class="lesson-header">
+              <div><span>STEP 08 · 7 MIN</span><h2>Connect the browser to the agent</h2></div>
+              <button class="complete-button" type="button" data-complete="8">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS FETCH?</span><p><code>fetch</code> is the browser function used to send HTTP requests and receive responses.</p></section>
+              <section><span>WHAT DOES IT DO HERE?</span><p>It sends the textarea message to <code>/api/agent</code>, waits for JSON, then displays the trace and final answer.</p></section>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/public/app.js · lines 44–56</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>try {
+  const response = await fetch("/api/agent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Request failed");
+
+  modeBadge.textContent = data.mode;
+  renderTrace(data.trace);
+  answer.textContent = data.answer;
+}</code></pre>
+            </div>
+
+            <div class="request-response">
+              <div><span>BROWSER SENDS</span><pre>{ "message": "I have 3 hours..." }</pre></div>
+              <i>→</i>
+              <div><span>SERVER RETURNS</span><pre>{ "mode": "demo", "answer": "...", "trace": [...] }</pre></div>
+            </div>
+
+            <div class="concept-line"><b>Security:</b> the browser never receives the API key. Only the server reads <code>OPENAI_API_KEY</code>.</div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>You can follow one user message from the textarea to the rendered answer.</p></div>
+          </article>
+
+          <article class="lesson" id="step-9" data-step="9">
+            <header class="lesson-header">
+              <div><span>STEP 09 · 7 MIN</span><h2>Test, run, and understand the result</h2></div>
+              <button class="complete-button" type="button" data-complete="9">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHY TEST?</span><p>Model output varies, but calculator and memory code should behave predictably every time.</p></section>
+              <section><span>WHAT DOES THE TEST DO?</span><p>It calls the tool directly and checks that the returned object exactly matches the expected result.</p></section>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/test/tools.test.js · lines 11–21</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>test("calculates complete study sessions", () =&gt; {
+  assert.deepEqual(
+    calculateStudySessions({ hours: 3, session_minutes: 25 }),
+    {
+      total_minutes: 180,
+      sessions: 7,
+      session_minutes: 25,
+      unused_minutes: 5,
+    },
+  );
+});</code></pre>
+            </div>
+
+            <div class="run-grid">
+              <div><span>1 · INSTALL</span><code>cd study-agent<br />npm install</code></div>
+              <div><span>2 · TEST</span><code>npm test</code></div>
+              <div><span>3 · RUN</span><code>npm start</code></div>
+              <div><span>4 · OPEN</span><code>http://localhost:3000</code></div>
+            </div>
+
+            <div class="mode-explanation">
+              <div><strong>Demo mode</strong><p>Works immediately without a key. It demonstrates the same visible workflow with deterministic local code.</p></div>
+              <div><strong>OpenAI mode</strong><p>Copy <code>.env.example</code> to <code>.env</code> and add your API key. The real model then chooses the tools.</p></div>
+            </div>
+
+            <div class="final-checklist">
+              <span>YOU NOW KNOW THE COMPLETE WORKFLOW</span>
+              <ul>
+                <li>✓ The browser collects the goal.</li>
+                <li>✓ The API server protects secrets and calls the agent.</li>
+                <li>✓ Instructions define the agent’s job.</li>
+                <li>✓ The model chooses text or tool calls.</li>
+                <li>✓ JavaScript executes tools.</li>
+                <li>✓ Tool results return to the model through the loop.</li>
+                <li>✓ The final answer returns to the browser.</li>
+              </ul>
+              <a href="http://127.0.0.1:3000" target="_blank" rel="noreferrer">Open the finished Study Agent ↗</a>
+            </div>
+            <div class="checkpoint"><span>FINAL CHECKPOINT</span><p>Change the calculator tool or add one new instruction, run the project again, and explain why the behavior changed.</p></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer page-width">
+      <div><span>A</span><strong>AI Agent Course</strong></div>
+      <p>Course source: <code>course/</code> · Real project: <code>study-agent/</code></p>
+      <a href="#top">Back to top ↑</a>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

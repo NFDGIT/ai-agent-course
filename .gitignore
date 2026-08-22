@@ -1,0 +1,5 @@
+.DS_Store
+.vscode/
+study-agent/node_modules/
+study-agent/.env
+npm-debug.log*

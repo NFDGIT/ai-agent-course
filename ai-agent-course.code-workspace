@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "Course",
+      "path": "course"
+    },
+    {
+      "name": "Study Agent",
+      "path": "study-agent"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true
+    }
+  }
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A beginner-friendly Study Planner AI Agent." />
+    <title>Study Planner Agent</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <div>
+          <span class="eyebrow">REAL COURSE PROJECT</span>
+          <h1>Study Planner Agent</h1>
+          <p>Enter a learning goal. The agent will decide, use tools, observe results, and create a plan.</p>
+        </div>
+        <div class="status" id="status">Checking server…</div>
+      </header>
+
+      <section class="workspace">
+        <form id="agentForm" class="request-panel">
+          <label for="message">Your learning request</label>
+          <textarea id="message" rows="7">I have 3 hours to learn AI agents. Use 25-minute sessions and create a beginner plan.</textarea>
+          <button id="runButton" type="submit">Run the agent</button>
+          <p>Without an API key, the project runs in demo mode. Add a key to use the real model.</p>
+        </form>
+
+        <section class="result-panel">
+          <div class="panel-heading">
+            <h2>Agent trace</h2>
+            <span id="modeBadge">—</span>
+          </div>
+          <ol id="trace" class="trace">
+            <li class="placeholder">The agent’s steps will appear here.</li>
+          </ol>
+          <div class="answer">
+            <span>FINAL ANSWER</span>
+            <pre id="answer">Waiting for your request.</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
