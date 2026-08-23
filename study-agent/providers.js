@@ -1,3 +1,9 @@
+import {
+  getProviderStorePath,
+  loadProviderRecords,
+  saveProviderRecords,
+} from "./provider-store.js";
+
 const defaultProvider = {
   alias: "Default",
   baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
@@ -37,6 +43,10 @@ function normalizeBaseUrl(baseUrl) {
   return parsedUrl.toString().replace(/\/$/, "");
 }
 
+function normalizeApiKey(apiKey = "") {
+  return apiKey.trim().replace(/^Bearer\s+/i, "");
+}
+
 function publicProvider(provider) {
   return {
     alias: provider.alias,
@@ -65,6 +75,48 @@ function extractModelIds(payload) {
   )].sort((first, second) => first.localeCompare(second));
 }
 
+function customProviderRecords(replacementProvider) {
+  const customProviders = [...providers.values()].filter(
+    (provider) => provider.source === "custom" && provider.alias.toLowerCase() !== replacementProvider?.alias.toLowerCase(),
+  );
+  if (replacementProvider) customProviders.push(replacementProvider);
+
+  return customProviders.map((provider) => ({
+    alias: provider.alias,
+    baseUrl: provider.baseUrl,
+    apiKey: provider.apiKey,
+    models: [...provider.models],
+  }));
+}
+
+function loadStoredProviders() {
+  let records;
+  try {
+    records = loadProviderRecords();
+  } catch (error) {
+    console.warn(error.message);
+    return;
+  }
+
+  for (const record of records) {
+    try {
+      const provider = {
+        alias: normalizeAlias(record.alias),
+        baseUrl: normalizeBaseUrl(record.baseUrl),
+        apiKey: normalizeApiKey(record.apiKey),
+        models: extractModelIds({ models: record.models }),
+        source: "custom",
+      };
+      if (provider.alias.toLowerCase() === "default" || provider.models.length === 0) continue;
+      providers.set(provider.alias.toLowerCase(), provider);
+    } catch (error) {
+      console.warn(`Skipped an invalid stored provider: ${error.message}`);
+    }
+  }
+}
+
+loadStoredProviders();
+
 export function listProviders() {
   return [...providers.values()].map(publicProvider);
 }
@@ -86,7 +138,7 @@ export function selectProviderModel(provider, requestedModel) {
 
 export async function discoverProvider(
   { alias, baseUrl, apiKey = "" },
-  { fetchImpl = fetch } = {},
+  { fetchImpl = fetch, persist = true, storePath = getProviderStorePath() } = {},
 ) {
   const normalizedAlias = normalizeAlias(alias);
   if (normalizedAlias.toLowerCase() === "default") {
@@ -94,8 +146,9 @@ export async function discoverProvider(
   }
 
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+  const normalizedApiKey = normalizeApiKey(apiKey);
   const headers = { Accept: "application/json" };
-  if (apiKey.trim()) headers.Authorization = `Bearer ${apiKey.trim()}`;
+  if (normalizedApiKey) headers.Authorization = `Bearer ${normalizedApiKey}`;
 
   let modelResponse;
   try {
@@ -109,6 +162,11 @@ export async function discoverProvider(
 
   if (!modelResponse.ok) {
     const responseText = await modelResponse.text();
+    if (modelResponse.status === 401) {
+      throw new Error(
+        "The provider rejected the API key (HTTP 401). Paste a valid raw API key without quotes or a Bearer prefix.",
+      );
+    }
     throw new Error(
       `Model discovery failed with HTTP ${modelResponse.status}${responseText ? `: ${responseText.slice(0, 180)}` : ""}`,
     );
@@ -123,24 +181,33 @@ export async function discoverProvider(
   const provider = {
     alias: normalizedAlias,
     baseUrl: normalizedBaseUrl,
-    apiKey: apiKey.trim(),
+    apiKey: normalizedApiKey,
     models,
     source: "custom",
   };
 
+  if (persist) saveProviderRecords(customProviderRecords(provider), storePath);
   providers.set(normalizedAlias.toLowerCase(), provider);
   return publicProvider(provider);
 }
 
-export function removeProvider(alias) {
+export function removeProvider(alias, { persist = true, storePath = getProviderStorePath() } = {}) {
   const normalizedAlias = normalizeAlias(alias);
   if (normalizedAlias.toLowerCase() === "default") {
     throw new Error("The Default provider cannot be removed");
   }
+  if (!providers.has(normalizedAlias.toLowerCase())) return false;
+  if (persist) {
+    const remainingProviders = customProviderRecords().filter(
+      (provider) => provider.alias.toLowerCase() !== normalizedAlias.toLowerCase(),
+    );
+    saveProviderRecords(remainingProviders, storePath);
+  }
   return providers.delete(normalizedAlias.toLowerCase());
 }
 
-export function resetCustomProviders() {
+export function resetCustomProviders({ persist = false, storePath = getProviderStorePath() } = {}) {
+  if (persist) saveProviderRecords([], storePath);
   for (const [providerKey, provider] of providers) {
     if (provider.source === "custom") providers.delete(providerKey);
   }

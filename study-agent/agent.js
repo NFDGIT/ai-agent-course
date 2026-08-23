@@ -36,7 +36,7 @@ function extractNumber(pattern, text, fallback) {
 function runDemoAgent(message, { provider, model }) {
   const trace = [];
   const hours = extractNumber(/(\d+(?:\.\d+)?)\s*hours?/i, message, 2);
-  const sessionMinutes = extractNumber(/(\d+)\s*(?:minute|min)/i, message, 25);
+  const sessionMinutes = extractNumber(/(\d+)\s*-?\s*(?:minute|min)/i, message, 25);
 
   addTrace(trace, "decision", "Understand the goal", "The request asks for a timed learning plan.");
   addTrace(trace, "tool", "Call calculate_study_sessions", `${hours} hours, ${sessionMinutes}-minute sessions`);
@@ -78,57 +78,146 @@ function runDemoAgent(message, { provider, model }) {
   };
 }
 
-export async function runStudyAgent(message, { providerAlias = "Default", model: requestedModel } = {}) {
+function* splitText(text, chunkSize = 24) {
+  for (let index = 0; index < text.length; index += chunkSize) {
+    yield text.slice(index, index + chunkSize);
+  }
+}
+
+function providerError(provider, model, error, streamModel) {
+  const responseMode = streamModel ? "streaming /responses API" : "/responses API";
+  return new Error(
+    `Provider ${provider.alias} could not run model ${model}. It must support the OpenAI-compatible ${responseMode} and function calling. ${error.message}`,
+  );
+}
+
+export function prepareResponseOutputForInput(output) {
+  return output.map((item) => {
+    if (item.type === "function_call") {
+      const { parsed_arguments: _parsedArguments, ...inputItem } = item;
+      return inputItem;
+    }
+
+    if (item.type === "message") {
+      return {
+        ...item,
+        content: item.content.map((content) => {
+          const { parsed: _parsed, ...inputContent } = content;
+          return inputContent;
+        }),
+      };
+    }
+
+    return item;
+  });
+}
+
+async function* runStudyAgentEvents(
+  message,
+  { providerAlias = "Default", model: requestedModel, signal, streamModel = false } = {},
+) {
   const provider = getProvider(providerAlias);
   const model = selectProviderModel(provider, requestedModel);
   const client = createClient(provider);
-  if (!client) return runDemoAgent(message, { provider, model });
+
+  if (!client) {
+    const result = runDemoAgent(message, { provider, model });
+    yield { type: "agent.started", mode: result.mode, provider: result.provider, model: result.model };
+    for (const step of result.trace) yield { type: "trace", step };
+    for (const delta of splitText(result.answer)) yield { type: "text.delta", delta };
+    yield { type: "done", result };
+    return;
+  }
 
   const trace = [];
   const input = [{ role: "user", content: message }];
+  yield { type: "agent.started", mode: "openai", provider: provider.alias, model };
 
   for (let step = 0; step < 6; step += 1) {
-    addTrace(trace, "decision", `Model turn ${step + 1}`, "Ask the model for the next response or action.");
+    const decision = {
+      type: "decision",
+      title: `Model turn ${step + 1}`,
+      detail: "Ask the model for the next response or action.",
+    };
+    trace.push(decision);
+    yield { type: "trace", step: decision };
 
     let response;
     try {
-      response = await client.responses.create({
+      const request = {
         model,
         instructions,
         tools: toolDefinitions,
         input,
-      });
+      };
+
+      if (streamModel) {
+        const responseStream = client.responses.stream(request, { signal });
+        for await (const event of responseStream) {
+          if (event.type === "response.output_text.delta") {
+            yield { type: "text.delta", delta: event.delta };
+          }
+        }
+        response = await responseStream.finalResponse();
+      } else {
+        response = await client.responses.create(request, { signal });
+      }
     } catch (error) {
-      throw new Error(
-        `Provider ${provider.alias} could not run model ${model}. It must support the OpenAI-compatible /responses API and function calling. ${error.message}`,
-      );
+      throw providerError(provider, model, error, streamModel);
     }
 
-    input.push(...response.output);
+    input.push(...prepareResponseOutputForInput(response.output));
     const functionCalls = response.output.filter((item) => item.type === "function_call");
 
     if (functionCalls.length === 0) {
-      addTrace(trace, "final", "Final answer", "The model finished without requesting another tool.");
-      return {
+      const finalStep = {
+        type: "final",
+        title: "Final answer",
+        detail: "The model finished without requesting another tool.",
+      };
+      trace.push(finalStep);
+      yield { type: "trace", step: finalStep };
+
+      const result = {
         mode: "openai",
         provider: provider.alias,
         model,
         answer: response.output_text,
         trace,
       };
+      yield { type: "done", result };
+      return;
     }
 
     for (const functionCall of functionCalls) {
       const argumentsObject = JSON.parse(functionCall.arguments);
-      addTrace(trace, "tool", `Call ${functionCall.name}`, JSON.stringify(argumentsObject));
+      const toolStep = {
+        type: "tool",
+        title: `Call ${functionCall.name}`,
+        detail: JSON.stringify(argumentsObject),
+      };
+      trace.push(toolStep);
+      yield { type: "trace", step: toolStep };
 
       let result;
       try {
         result = await executeTool(functionCall.name, argumentsObject);
-        addTrace(trace, "observation", `${functionCall.name} result`, JSON.stringify(result));
+        const observation = {
+          type: "observation",
+          title: `${functionCall.name} result`,
+          detail: JSON.stringify(result),
+        };
+        trace.push(observation);
+        yield { type: "trace", step: observation };
       } catch (error) {
         result = { error: error.message };
-        addTrace(trace, "error", `${functionCall.name} failed`, error.message);
+        const failure = {
+          type: "error",
+          title: `${functionCall.name} failed`,
+          detail: error.message,
+        };
+        trace.push(failure);
+        yield { type: "trace", step: failure };
       }
 
       input.push({
@@ -140,4 +229,16 @@ export async function runStudyAgent(message, { providerAlias = "Default", model:
   }
 
   throw new Error("The agent reached the maximum number of steps.");
+}
+
+export async function* streamStudyAgent(message, options = {}) {
+  yield* runStudyAgentEvents(message, { ...options, streamModel: true });
+}
+
+export async function runStudyAgent(message, options = {}) {
+  for await (const event of runStudyAgentEvents(message, options)) {
+    if (event.type === "done") return event.result;
+  }
+
+  throw new Error("The agent stream ended without a result.");
 }

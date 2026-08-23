@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import express from "express";
 
-import { runStudyAgent } from "./agent.js";
+import { runStudyAgent, streamStudyAgent } from "./agent.js";
 import { discoverProvider, listProviders, removeProvider } from "./providers.js";
 import { readMemory } from "./tools.js";
 
@@ -54,6 +54,57 @@ app.delete("/api/providers/:alias", (request, response) => {
 
 app.get("/api/memory", (_request, response) => {
   response.json(readMemory());
+});
+
+function writeServerSentEvent(response, event) {
+  const { type, ...data } = event;
+  response.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+app.post("/api/agent/stream", async (request, response) => {
+  const message = request.body?.message?.trim();
+  const providerAlias = request.body?.providerAlias?.trim() || "Default";
+  const model = request.body?.model?.trim();
+
+  if (!message) {
+    response.status(400).json({ error: "message is required" });
+    return;
+  }
+
+  response.status(200);
+  response.set({
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  response.flushHeaders();
+
+  const abortController = new AbortController();
+  request.on("aborted", () => abortController.abort());
+  response.on("close", () => {
+    if (!response.writableEnded) abortController.abort();
+  });
+
+  try {
+    for await (const event of streamStudyAgent(message, {
+      providerAlias,
+      model,
+      signal: abortController.signal,
+    })) {
+      writeServerSentEvent(response, event);
+    }
+  } catch (error) {
+    console.error(error);
+    if (!abortController.signal.aborted) {
+      writeServerSentEvent(response, {
+        type: "error",
+        message: error.message || "The agent failed",
+      });
+    }
+  } finally {
+    response.end();
+  }
 });
 
 app.post("/api/agent", async (request, response) => {

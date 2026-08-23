@@ -21,14 +21,31 @@ test("discovers and stores models without exposing the API key", async () => {
   };
 
   const provider = await discoverProvider(
-    { alias: "Example", baseUrl: "https://example.test/v1/", apiKey: "secret-key" },
-    { fetchImpl: fakeFetch },
+    { alias: "Example", baseUrl: "https://example.test/v1/", apiKey: "Bearer secret-key" },
+    { fetchImpl: fakeFetch, persist: false },
   );
 
   assert.deepEqual(provider.models, ["model-a", "model-b"]);
   assert.equal(provider.hasApiKey, true);
   assert.equal("apiKey" in provider, false);
   assert.equal(getProvider("example").apiKey, "secret-key");
+});
+
+test("explains how to recover from an invalid provider token", async () => {
+  await assert.rejects(
+    discoverProvider(
+      { alias: "Invalid", baseUrl: "https://example.test/v1", apiKey: "wrong-key" },
+      {
+        persist: false,
+        fetchImpl: async () => ({
+          ok: false,
+          status: 401,
+          text: async () => '{"error":"invalid token"}',
+        }),
+      },
+    ),
+    /valid raw API key without quotes or a Bearer prefix/,
+  );
 });
 
 test("selects only models discovered for the provider", () => {
@@ -42,6 +59,7 @@ test("lists the environment provider and custom providers", async () => {
   await discoverProvider(
     { alias: "Example", baseUrl: "https://example.test/v1" },
     {
+      persist: false,
       fetchImpl: async () => ({
         ok: true,
         json: async () => ({ data: [{ id: "model-a" }] }),

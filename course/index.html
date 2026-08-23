@@ -52,6 +52,7 @@
             <li><i>03</i> Model request</li>
             <li><i>04</i> Two real tools</li>
             <li><i>05</i> Multi-step agent loop</li>
+            <li><i>06</i> Live streaming output</li>
           </ul>
         </aside>
       </section>
@@ -85,7 +86,7 @@
       <section class="course page-width" id="steps">
         <aside class="course-sidebar">
           <div class="progress-box">
-            <div><span>COURSE PROGRESS</span><strong id="progressText">0 / 9</strong></div>
+            <div><span>COURSE PROGRESS</span><strong id="progressText">0 / 11</strong></div>
             <div class="progress-track"><div id="progressBar"></div></div>
             <button id="resetProgress" type="button">Reset progress</button>
           </div>
@@ -100,6 +101,7 @@
             <li><a href="#step-8"><span>08</span>Connect the browser</a></li>
             <li><a href="#step-9"><span>09</span>Test and run</a></li>
             <li><a href="#step-10"><span>10</span>Add model providers</a></li>
+            <li><a href="#step-11"><span>11</span>Stream live output</a></li>
           </ol>
         </aside>
 
@@ -582,12 +584,85 @@ const client = new OpenAI({
 });</code></pre>
             </div>
 
-            <div class="concept-line"><b>Security:</b> the API key is submitted to your local server, kept only in memory, and removed from every provider object sent back to the browser.</div>
+            <div class="concept-line"><b>Local persistence:</b> the server saves custom providers in <code>~/.ai-agent-course/providers.json</code> with owner-only permissions. The key is never returned to the browser and the file stays outside this Git repository.</div>
+            <div class="concept-line"><b>Security tradeoff:</b> the key survives restarts, but it is plain text on your computer. Protect your operating-system account and never copy the provider file into GitHub.</div>
             <div class="example-box example-box--analogy">
               <span>COMPATIBILITY RULE</span>
               <p>Loading the model list proves that <code>/models</code> works. Running this particular agent also requires the provider to implement OpenAI-compatible <code>/responses</code> requests and function calling.</p>
             </div>
             <div class="checkpoint"><span>CHECKPOINT</span><p>Add a local or hosted provider, verify its models appear, choose one beside the input, and explain how that choice reaches <code>runStudyAgent</code>.</p></div>
+          </article>
+
+          <article class="lesson" id="step-11" data-step="11">
+            <header class="lesson-header">
+              <div><span>STEP 11 · STREAMING UPGRADE</span><h2>Show work and text while the agent runs</h2></div>
+              <button class="complete-button" type="button" data-complete="11">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS STREAMING?</span><p>Streaming sends many small events during one request instead of making the browser wait for one large final JSON response.</p></section>
+              <section><span>WHAT DOES IT DO?</span><p>It makes a slow model feel responsive because trace steps and answer text appear immediately as they are produced.</p></section>
+            </div>
+
+            <div class="example-box example-box--analogy">
+              <span>CONCRETE ANALOGY</span>
+              <p>Non-streaming is a restaurant serving every course at the end. Streaming serves each course when it is ready. The full meal is the same, but you see progress sooner.</p>
+            </div>
+
+            <div class="request-response">
+              <div><span>SERVER EVENTS</span><pre>agent.started → trace → text.delta</pre></div>
+              <i>→</i>
+              <div><span>FINAL EVENT</span><pre>done { complete result }</pre></div>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/agent.js · model event stream</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>const responseStream = client.responses.stream({
+  model,
+  instructions,
+  tools: toolDefinitions,
+  input,
+}, { signal });
+
+for await (const event of responseStream) {
+  if (event.type === "response.output_text.delta") {
+    yield { type: "text.delta", delta: event.delta };
+  }
+}
+
+const response = await responseStream.finalResponse();</code></pre>
+            </div>
+
+            <div class="concept-line"><b>Important function-call rule:</b> the loop waits for <code>finalResponse()</code> before reading <code>functionCall.arguments</code>. A partial JSON argument string must never be executed.</div>
+            <div class="concept-line"><b>Provider compatibility:</b> the OpenAI SDK adds local fields such as <code>parsed_arguments</code> and <code>parsed</code>. The project removes those helper fields before sending response output into the next model request.</div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/server.js · SSE endpoint</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>response.set({
+  "Content-Type": "text/event-stream; charset=utf-8",
+  "Cache-Control": "no-cache, no-transform",
+});
+
+for await (const event of streamStudyAgent(message, options)) {
+  writeServerSentEvent(response, event);
+}</code></pre>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/public/app.js · browser updates</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>await readEventStream(response, (eventType, data) =&gt; {
+  if (eventType === "trace") appendTrace(data.step);
+  if (eventType === "text.delta") {
+    answer.textContent += data.delta;
+  }
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+              <span>WHY KEEP THE OLD ENDPOINT?</span>
+              <p><code>POST /api/agent</code> still returns normal JSON. It is a simpler debugging baseline and a fallback when a client cannot consume the SSE stream.</p>
+            </div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>Run the agent and point to one <code>trace</code> event, one <code>text.delta</code> event, and the final <code>done</code> event in the code.</p></div>
           </article>
         </div>
       </section>

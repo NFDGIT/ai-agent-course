@@ -38,7 +38,7 @@
                 <input id="providerKeyInput" name="apiKey" type="password" autocomplete="off" placeholder="sk-…" />
               </label>
               <button id="loadModelsButton" type="submit">Connect and load models</button>
-              <p class="provider-message" id="providerMessage">The key is kept only in server memory and is never returned to the browser.</p>
+              <p class="provider-message" id="providerMessage">The provider is saved in <code>~/.ai-agent-course/providers.json</code> and its key is never returned to the browser.</p>
             </form>
           </details>
 
@@ -58,7 +58,7 @@
             <label for="message">Your learning request</label>
             <textarea id="message" rows="7">I have 3 hours to learn AI agents. Use 25-minute sessions and create a beginner plan.</textarea>
             <button id="runButton" type="submit">Run the agent</button>
-            <p>Custom providers must expose OpenAI-compatible <code>/models</code> and <code>/responses</code> endpoints.</p>
+            <p>Custom providers must expose OpenAI-compatible <code>/models</code> and streaming <code>/responses</code> endpoints.</p>
           </form>
         </div>
 

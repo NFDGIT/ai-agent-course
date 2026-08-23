@@ -92,16 +92,121 @@ async function loadStatus() {
 function renderTrace(trace) {
   traceList.replaceChildren();
 
-  for (const step of trace) {
-    const item = document.createElement("li");
-    const title = document.createElement("strong");
-    const detail = document.createElement("span");
+  for (const step of trace) appendTrace(step);
+}
 
-    title.textContent = `${step.type}: ${step.title}`;
-    detail.textContent = step.detail;
-    item.append(title, detail);
-    traceList.append(item);
+function appendTrace(step) {
+  const item = document.createElement("li");
+  const title = document.createElement("strong");
+  const detail = document.createElement("span");
+
+  title.textContent = `${step.type}: ${step.title}`;
+  detail.textContent = step.detail;
+  item.append(title, detail);
+  traceList.append(item);
+}
+
+async function readEventStream(response, onEvent) {
+  if (!response.body) throw new Error("This browser does not support streaming responses.");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  async function dispatch(block) {
+    let eventType = "message";
+    const dataLines = [];
+
+    for (const line of block.split(/\r?\n/)) {
+      if (line.startsWith("event:")) eventType = line.slice(6).trim();
+      if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+    }
+
+    if (dataLines.length === 0) return;
+    await onEvent(eventType, JSON.parse(dataLines.join("\n")));
   }
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+
+      const blocks = buffer.split(/\r?\n\r?\n/);
+      buffer = blocks.pop() || "";
+      for (const block of blocks) await dispatch(block);
+
+      if (done) break;
+    }
+
+    if (buffer.trim()) await dispatch(buffer);
+  } catch (error) {
+    await reader.cancel(error).catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function readError(response) {
+  const data = await response.json().catch(() => ({}));
+  return data.error || `Request failed with status ${response.status}`;
+}
+
+async function runNonStreamingAgent(payload) {
+  const response = await fetch("/api/agent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error(await readError(response));
+  const data = await response.json();
+  modeBadge.textContent = `${data.provider} · ${data.model}`;
+  renderTrace(data.trace);
+  answer.textContent = data.answer;
+}
+
+async function runStreamingAgent(payload) {
+  const response = await fetch("/api/agent/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if ([404, 405, 501].includes(response.status)) {
+    await runNonStreamingAgent(payload);
+    return;
+  }
+  if (!response.ok) throw new Error(await readError(response));
+
+  let completed = false;
+  await readEventStream(response, (eventType, data) => {
+    if (eventType === "agent.started") {
+      modeBadge.textContent = `${data.provider} · ${data.model} · streaming`;
+      return;
+    }
+
+    if (eventType === "trace") {
+      appendTrace(data.step);
+      return;
+    }
+
+    if (eventType === "text.delta") {
+      answer.textContent += data.delta;
+      return;
+    }
+
+    if (eventType === "done") {
+      completed = true;
+      modeBadge.textContent = `${data.result.provider} · ${data.result.model}`;
+      answer.textContent = data.result.answer;
+      return;
+    }
+
+    if (eventType === "error") throw new Error(data.message || "The agent failed");
+  });
+
+  if (!completed) throw new Error("The agent stream ended before completion.");
 }
 
 providerSelect.addEventListener("change", () => {
@@ -171,25 +276,15 @@ form.addEventListener("submit", async (event) => {
 
   runButton.disabled = true;
   runButton.textContent = "Agent is working…";
-  answer.textContent = "Waiting for the agent…";
+  traceList.replaceChildren();
+  answer.textContent = "";
 
   try {
-    const response = await fetch("/api/agent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        providerAlias: providerSelect.value,
-        model: modelSelect.value,
-      }),
+    await runStreamingAgent({
+      message,
+      providerAlias: providerSelect.value,
+      model: modelSelect.value,
     });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Request failed");
-
-    modeBadge.textContent = `${data.provider} · ${data.model}`;
-    renderTrace(data.trace);
-    answer.textContent = data.answer;
   } catch (error) {
     traceList.innerHTML = '<li class="placeholder">The request failed.</li>';
     answer.textContent = error.message;
