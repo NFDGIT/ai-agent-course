@@ -1,6 +1,6 @@
 # Complete AI Agent Course Page
 
-This course explains the real project in `../study-agent/` from beginning to end.
+This ten-step course explains the real project in `../study-agent/` from beginning to end, including custom provider discovery and model selection.
 
 Every lesson includes:
 

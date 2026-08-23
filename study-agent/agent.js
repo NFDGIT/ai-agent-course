@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 
+import { getProvider, selectProviderModel } from "./providers.js";
 import { executeTool, saveLearningGoal, toolDefinitions } from "./tools.js";
 
 const instructions = `
@@ -15,9 +16,12 @@ Rules:
 - Keep the final answer concise and actionable.
 `;
 
-function createClient() {
-  if (!process.env.OPENAI_API_KEY) return null;
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function createClient(provider) {
+  if (provider.source === "environment" && !provider.apiKey) return null;
+  return new OpenAI({
+    apiKey: provider.apiKey || "not-needed",
+    baseURL: provider.baseUrl,
+  });
 }
 
 function addTrace(trace, type, title, detail) {
@@ -29,7 +33,7 @@ function extractNumber(pattern, text, fallback) {
   return match ? Number(match[1]) : fallback;
 }
 
-function runDemoAgent(message) {
+function runDemoAgent(message, { provider, model }) {
   const trace = [];
   const hours = extractNumber(/(\d+(?:\.\d+)?)\s*hours?/i, message, 2);
   const sessionMinutes = extractNumber(/(\d+)\s*(?:minute|min)/i, message, 25);
@@ -67,28 +71,38 @@ function runDemoAgent(message) {
 
   return {
     mode: "demo",
+    provider: provider.alias,
+    model,
     answer: `You have ${sessions} complete ${sessionMinutes}-minute sessions.\n\n${plan}`,
     trace,
   };
 }
 
-export async function runStudyAgent(message) {
-  const client = createClient();
-  if (!client) return runDemoAgent(message);
+export async function runStudyAgent(message, { providerAlias = "Default", model: requestedModel } = {}) {
+  const provider = getProvider(providerAlias);
+  const model = selectProviderModel(provider, requestedModel);
+  const client = createClient(provider);
+  if (!client) return runDemoAgent(message, { provider, model });
 
   const trace = [];
   const input = [{ role: "user", content: message }];
-  const model = process.env.OPENAI_MODEL || "gpt-5.4";
 
   for (let step = 0; step < 6; step += 1) {
     addTrace(trace, "decision", `Model turn ${step + 1}`, "Ask the model for the next response or action.");
 
-    const response = await client.responses.create({
-      model,
-      instructions,
-      tools: toolDefinitions,
-      input,
-    });
+    let response;
+    try {
+      response = await client.responses.create({
+        model,
+        instructions,
+        tools: toolDefinitions,
+        input,
+      });
+    } catch (error) {
+      throw new Error(
+        `Provider ${provider.alias} could not run model ${model}. It must support the OpenAI-compatible /responses API and function calling. ${error.message}`,
+      );
+    }
 
     input.push(...response.output);
     const functionCalls = response.output.filter((item) => item.type === "function_call");
@@ -97,6 +111,8 @@ export async function runStudyAgent(message) {
       addTrace(trace, "final", "Final answer", "The model finished without requesting another tool.");
       return {
         mode: "openai",
+        provider: provider.alias,
+        model,
         answer: response.output_text,
         trace,
       };

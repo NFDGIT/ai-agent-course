@@ -19,12 +19,48 @@
       </header>
 
       <section class="workspace">
-        <form id="agentForm" class="request-panel">
-          <label for="message">Your learning request</label>
-          <textarea id="message" rows="7">I have 3 hours to learn AI agents. Use 25-minute sessions and create a beginner plan.</textarea>
-          <button id="runButton" type="submit">Run the agent</button>
-          <p>Without an API key, the project runs in demo mode. Add a key to use the real model.</p>
-        </form>
+        <div class="request-panel">
+          <details class="provider-setup">
+            <summary>Add model provider</summary>
+            <form id="providerForm" class="provider-form">
+              <div class="provider-fields">
+                <label>
+                  Provider alias
+                  <input id="providerAliasInput" name="alias" placeholder="Local Ollama" required />
+                </label>
+                <label>
+                  API base URL
+                  <input id="providerUrlInput" name="baseUrl" type="url" placeholder="http://localhost:11434/v1" required />
+                </label>
+              </div>
+              <label>
+                API key <small>optional for local providers</small>
+                <input id="providerKeyInput" name="apiKey" type="password" autocomplete="off" placeholder="sk-…" />
+              </label>
+              <button id="loadModelsButton" type="submit">Connect and load models</button>
+              <p class="provider-message" id="providerMessage">The key is kept only in server memory and is never returned to the browser.</p>
+            </form>
+          </details>
+
+          <form id="agentForm">
+            <div class="model-selection">
+              <label>
+                Provider
+                <select id="providerSelect" disabled></select>
+              </label>
+              <label>
+                Model
+                <select id="modelSelect" disabled></select>
+              </label>
+              <button class="remove-provider" id="removeProviderButton" type="button" disabled>Remove</button>
+            </div>
+
+            <label for="message">Your learning request</label>
+            <textarea id="message" rows="7">I have 3 hours to learn AI agents. Use 25-minute sessions and create a beginner plan.</textarea>
+            <button id="runButton" type="submit">Run the agent</button>
+            <p>Custom providers must expose OpenAI-compatible <code>/models</code> and <code>/responses</code> endpoints.</p>
+          </form>
+        </div>
 
         <section class="result-panel">
           <div class="panel-heading">

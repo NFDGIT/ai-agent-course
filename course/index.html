@@ -99,6 +99,7 @@
             <li><a href="#step-7"><span>07</span>Build the agent loop</a></li>
             <li><a href="#step-8"><span>08</span>Connect the browser</a></li>
             <li><a href="#step-9"><span>09</span>Test and run</a></li>
+            <li><a href="#step-10"><span>10</span>Add model providers</a></li>
           </ol>
         </aside>
 
@@ -143,6 +144,7 @@
             <div class="file-map">
               <div><code>server.js</code><span>Receives browser requests</span></div>
               <div><code>agent.js</code><span>Runs model + agent loop</span></div>
+              <div><code>providers.js</code><span>Discovers providers and models</span></div>
               <div><code>tools.js</code><span>Defines real actions</span></div>
               <div><code>public/</code><span>Contains the webpage</span></div>
               <div><code>test/</code><span>Checks predictable code</span></div>
@@ -191,7 +193,7 @@
             </div>
 
             <div class="code-block">
-              <div class="code-header"><span>study-agent/server.js · lines 26–41</span><button class="copy-button" type="button">Copy</button></div>
+              <div class="code-header"><span>study-agent/server.js · agent endpoint</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>app.post("/api/agent", async (request, response) =&gt; {
   const message = request.body?.message?.trim();
 
@@ -233,7 +235,7 @@
             </div>
 
             <div class="code-block">
-              <div class="code-header"><span>study-agent/agent.js · lines 79–84</span><button class="copy-button" type="button">Copy</button></div>
+              <div class="code-header"><span>study-agent/agent.js · model request</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>const response = await client.responses.create({
   model,
   instructions,
@@ -270,7 +272,7 @@
             </div>
 
             <div class="code-block">
-              <div class="code-header"><span>study-agent/agent.js · lines 5–16</span><button class="copy-button" type="button">Copy</button></div>
+              <div class="code-header"><span>study-agent/agent.js · instructions</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>const instructions = `
 You are a beginner-friendly Study Planner Agent.
 
@@ -381,7 +383,7 @@ Rules:
             </div>
 
             <div class="code-block">
-              <div class="code-header"><span>study-agent/agent.js · lines 76–116</span><button class="copy-button" type="button">Copy</button></div>
+              <div class="code-header"><span>study-agent/agent.js · agent loop</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>for (let step = 0; step &lt; 6; step += 1) {
   addTrace(trace, "decision", `Model turn ${step + 1}`,
     "Ask the model for the next response or action.");
@@ -448,12 +450,16 @@ Rules:
             </div>
 
             <div class="code-block">
-              <div class="code-header"><span>study-agent/public/app.js · lines 44–56</span><button class="copy-button" type="button">Copy</button></div>
+              <div class="code-header"><span>study-agent/public/app.js · send selected provider and model</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>try {
   const response = await fetch("/api/agent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({
+      message,
+      providerAlias: providerSelect.value,
+      model: modelSelect.value,
+    }),
   });
 
   const data = await response.json();
@@ -487,7 +493,7 @@ Rules:
             </div>
 
             <div class="code-block">
-              <div class="code-header"><span>study-agent/test/tools.test.js · lines 11–21</span><button class="copy-button" type="button">Copy</button></div>
+              <div class="code-header"><span>study-agent/test/tools.test.js · calculator test</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>test("calculates complete study sessions", () =&gt; {
   assert.deepEqual(
     calculateStudySessions({ hours: 3, session_minutes: 25 }),
@@ -527,6 +533,61 @@ Rules:
               <a href="http://127.0.0.1:3000" target="_blank" rel="noreferrer">Open the finished Study Agent ↗</a>
             </div>
             <div class="checkpoint"><span>FINAL CHECKPOINT</span><p>Change the calculator tool or add one new instruction, run the project again, and explain why the behavior changed.</p></div>
+          </article>
+
+          <article class="lesson" id="step-10" data-step="10">
+            <header class="lesson-header">
+              <div><span>STEP 10 · OPTIONAL PROVIDER UPGRADE</span><h2>Discover providers and choose a model</h2></div>
+              <button class="complete-button" type="button" data-complete="10">Mark complete</button>
+            </header>
+
+            <div class="definition-grid">
+              <section><span>WHAT IS A PROVIDER?</span><p>A provider is the service hosting one or more models. Its base URL tells the SDK where API requests should go.</p></section>
+              <section><span>WHAT DOES THE ALIAS DO?</span><p>The alias is a friendly local name—such as <code>Local Ollama</code>—so the UI does not need to display a long URL everywhere.</p></section>
+            </div>
+
+            <div class="request-response">
+              <div><span>USER PROVIDES</span><pre>Alias + base URL + optional key</pre></div>
+              <i>→</i>
+              <div><span>SERVER DISCOVERS</span><pre>GET {baseUrl}/models</pre></div>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/providers.js · model discovery</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>const modelResponse = await fetch(`${normalizedBaseUrl}/models`, {
+  headers,
+  signal: AbortSignal.timeout(12_000),
+});
+
+const payload = await modelResponse.json();
+const models = extractModelIds(payload);
+
+providers.set(normalizedAlias.toLowerCase(), {
+  alias: normalizedAlias,
+  baseUrl: normalizedBaseUrl,
+  apiKey: apiKey.trim(),
+  models,
+  source: "custom",
+});</code></pre>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span>study-agent/agent.js · selected client</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>const provider = getProvider(providerAlias);
+const model = selectProviderModel(provider, requestedModel);
+
+const client = new OpenAI({
+  apiKey: provider.apiKey || "not-needed",
+  baseURL: provider.baseUrl,
+});</code></pre>
+            </div>
+
+            <div class="concept-line"><b>Security:</b> the API key is submitted to your local server, kept only in memory, and removed from every provider object sent back to the browser.</div>
+            <div class="example-box example-box--analogy">
+              <span>COMPATIBILITY RULE</span>
+              <p>Loading the model list proves that <code>/models</code> works. Running this particular agent also requires the provider to implement OpenAI-compatible <code>/responses</code> requests and function calling.</p>
+            </div>
+            <div class="checkpoint"><span>CHECKPOINT</span><p>Add a local or hosted provider, verify its models appear, choose one beside the input, and explain how that choice reaches <code>runStudyAgent</code>.</p></div>
           </article>
         </div>
       </section>
